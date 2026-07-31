@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiArrowLeft, FiStar, FiCalendar, FiDollarSign, FiTrash2 } from 'react-icons/fi'
+import { FiArrowLeft, FiStar, FiCalendar, FiDollarSign, FiTrash2, FiMapPin, FiClock } from 'react-icons/fi'
 import { guideService } from '../../api/axiosConfig'
 import { useAuth } from '../../context/AuthContext'
 import { toast } from 'react-toastify'
@@ -13,32 +13,58 @@ export default function GuideDetail() {
   const navigate = useNavigate()
   const [guide, setGuide] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [booking, setBooking] = useState({ startDate: '', endDate: '', specialRequests: '' })
+  
+  // Mapped to match BookingRequest DTO
+  const [booking, setBooking] = useState({ 
+    bookingDate: '', 
+    startTime: '10:00', 
+    durationHours: 2, 
+    meetingLocation: '', 
+    specialNotes: '' 
+  })
   const [bookingLoading, setBookingLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
-    guideService.getById(id).then(r => setGuide(r.data)).catch(() => toast.error('Could not load guide')).finally(() => setLoading(false))
+    guideService.getById(id)
+      .then(r => setGuide(r.data))
+      .catch(() => toast.error('Could not load guide'))
+      .finally(() => setLoading(false))
   }, [id])
 
   const handleBook = async (e) => {
     e.preventDefault()
     if (!isAuthenticated) return toast.error('Please login to book a guide')
-    if (!booking.startDate || !booking.endDate) return toast.error('Please select dates')
+    if (!booking.bookingDate || !booking.startTime || !booking.meetingLocation) {
+      return toast.error('Please fill in all required booking fields')
+    }
+
     setBookingLoading(true)
     try {
-      await guideService.createBooking({ guideId: parseInt(id), ...booking })
-      toast.success('Booking request sent!')
-      setBooking({ startDate: '', endDate: '', specialRequests: '' })
-    } catch { toast.error('Booking failed. Please try again.') }
-    finally { setBookingLoading(false) }
+      const payload = {
+        guideId: parseInt(id, 10),
+        bookingDate: booking.bookingDate,
+        startTime: booking.startTime.length === 5 ? `${booking.startTime}:00` : booking.startTime,
+        durationHours: parseInt(booking.durationHours, 10),
+        meetingLocation: booking.meetingLocation,
+        specialNotes: booking.specialNotes
+      }
+
+      await guideService.createBooking(payload)
+      toast.success('Booking request sent successfully!')
+      setBooking({ bookingDate: '', startTime: '10:00', durationHours: 2, meetingLocation: '', specialNotes: '' })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Booking failed. Please try again.')
+    } finally {
+      setBookingLoading(false)
+    }
   }
 
   const handleDeleteGuide = async () => {
     if (!window.confirm('Are you sure you want to delete this local guide?')) return
     setDeleteLoading(true)
     try {
-      await guideService.delete(id) // Ensure your guideService or axios config has a delete method matching your endpoint
+      await guideService.delete(id)
       toast.success('Local guide deleted successfully')
       navigate('/local-guides')
     } catch (err) {
@@ -59,7 +85,6 @@ export default function GuideDetail() {
             <FiArrowLeft size={14} /> Back
           </button>
 
-          {/* Admin Delete Action Button */}
           {isAdmin && (
             <button 
               onClick={handleDeleteGuide} 
@@ -75,14 +100,18 @@ export default function GuideDetail() {
           <div className="col-lg-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mm-card" style={{ padding: 32 }}>
               <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap' }}>
-                <div className="mm-avatar" style={{ width: 80, height: 80, fontSize: '2rem', flexShrink: 0 }}>
-                  {guide.name?.[0]?.toUpperCase()}
+                <div className="mm-avatar" style={{ width: 80, height: 80, fontSize: '2rem', flexShrink: 0, overflow: 'hidden' }}>
+                  {guide.profileImageUrl ? (
+                    <img src={guide.profileImageUrl} alt={guide.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    guide.name?.[0]?.toUpperCase()
+                  )}
                 </div>
                 <div>
                   <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800, marginBottom: 8 }}>{guide.name}</h2>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <span className="mm-badge mm-badge-primary">{guide.guideType?.replace(/_/g,' ')}</span>
-                    {guide.rating && <span className="mm-badge mm-badge-warning"><FiStar size={11} /> {guide.rating}</span>}
+                    {guide.rating && <span className="mm-badge mm-badge-warning"><FiStar size={11} /> {guide.rating} ({guide.totalReviews || 0})</span>}
                   </div>
                 </div>
               </div>
@@ -90,11 +119,11 @@ export default function GuideDetail() {
               <div className="row g-3 mb-4">
                 {[
                   { label: 'City', val: guide.city, icon: '📍' },
-                  { label: 'Rate/Day', val: guide.ratePerDay ? `₹${guide.ratePerDay}` : '—', icon: '💰' },
-                  { label: 'Languages', val: guide.languages || '—', icon: '🗣️' },
-                  { label: 'Experience', val: guide.experience ? `${guide.experience} years` : '—', icon: '📅' },
+                  { label: 'Hourly Rate', val: guide.hourlyRate ? `₹${guide.hourlyRate}` : '—', icon: '💰' },
+                  { label: 'Languages', val: guide.languages?.join(', ') || '—', icon: '🗣️' },
+                  { label: 'Experience', val: guide.experienceYears ? `${guide.experienceYears} years` : '—', icon: '📅' },
                   { label: 'Gender', val: guide.gender || '—', icon: '👤' },
-                  { label: 'Total Bookings', val: guide.totalBookings || '—', icon: '✅' },
+                  { label: 'Services', val: guide.servicesOffered?.join(', ') || '—', icon: '🛠️' },
                 ].map(({ label, val, icon }) => (
                   <div key={label} className="col-6 col-md-4">
                     <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '14px 16px' }}>
@@ -105,16 +134,16 @@ export default function GuideDetail() {
                 ))}
               </div>
 
-              {guide.bio && <>
+              {guide.about && <>
                 <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, marginBottom: 12 }}>About</h5>
-                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>{guide.bio}</p>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>{guide.about}</p>
               </>}
 
-              {guide.specialties?.length > 0 && (
+              {guide.specialization && (
                 <>
-                  <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, marginBottom: 12, marginTop: 24 }}>Specialties</h5>
+                  <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, marginBottom: 12, marginTop: 24 }}>Specialization</h5>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {guide.specialties.map(s => <span key={s} className="mm-badge mm-badge-success">{s}</span>)}
+                    <span className="mm-badge mm-badge-success">{guide.specialization}</span>
                   </div>
                 </>
               )}
@@ -125,26 +154,40 @@ export default function GuideDetail() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="mm-card" style={{ padding: 28, position: 'sticky', top: 100 }}>
               <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, marginBottom: 20 }}>Book This Guide</h5>
-              {guide.ratePerDay && (
+              {guide.hourlyRate && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'Space Grotesk, sans-serif', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    ₹{guide.ratePerDay}
+                    ₹{guide.hourlyRate}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>per day</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>per hour</div>
                 </div>
               )}
               <form onSubmit={handleBook}>
                 <div className="mm-form-group">
-                  <label className="mm-label"><FiCalendar size={13} /> Start Date</label>
-                  <input type="date" className="mm-input" value={booking.startDate} onChange={e => setBooking(b => ({ ...b, startDate: e.target.value }))} min={new Date().toISOString().split('T')[0]} />
+                  <label className="mm-label"><FiCalendar size={13} /> Booking Date *</label>
+                  <input type="date" className="mm-input" value={booking.bookingDate} onChange={e => setBooking(b => ({ ...b, bookingDate: e.target.value }))} min={new Date().toISOString().split('T')[0]} required />
+                </div>
+                <div className="row g-2">
+                  <div className="col-6">
+                    <div className="mm-form-group">
+                      <label className="mm-label"><FiClock size={13} /> Start Time *</label>
+                      <input type="time" className="mm-input" value={booking.startTime} onChange={e => setBooking(b => ({ ...b, startTime: e.target.value }))} required />
+                    </div>
+                  </div>
+                  <div className="col-6">
+                    <div className="mm-form-group">
+                      <label className="mm-label">Duration (Hrs) *</label>
+                      <input type="number" min="1" max="12" className="mm-input" value={booking.durationHours} onChange={e => setBooking(b => ({ ...b, durationHours: e.target.value }))} required />
+                    </div>
+                  </div>
                 </div>
                 <div className="mm-form-group">
-                  <label className="mm-label"><FiCalendar size={13} /> End Date</label>
-                  <input type="date" className="mm-input" value={booking.endDate} onChange={e => setBooking(b => ({ ...b, endDate: e.target.value }))} min={booking.startDate} />
+                  <label className="mm-label"><FiMapPin size={13} /> Meeting Location *</label>
+                  <input type="text" className="mm-input" placeholder="e.g. City Center Monument" value={booking.meetingLocation} onChange={e => setBooking(b => ({ ...b, meetingLocation: e.target.value }))} required />
                 </div>
                 <div className="mm-form-group">
-                  <label className="mm-label">Special Requests</label>
-                  <textarea className="mm-input" rows={3} placeholder="Any special requirements..." value={booking.specialRequests} onChange={e => setBooking(b => ({ ...b, specialRequests: e.target.value }))} style={{ resize: 'vertical' }} />
+                  <label className="mm-label">Special Notes</label>
+                  <textarea className="mm-input" rows={3} placeholder="Any special requirements..." value={booking.specialNotes} onChange={e => setBooking(b => ({ ...b, specialNotes: e.target.value }))} style={{ resize: 'vertical' }} />
                 </div>
                 <button type="submit" className="btn-primary-mm" style={{ width: '100%', justifyContent: 'center' }} disabled={bookingLoading}>
                   {bookingLoading ? <Spinner size={18} color="#fff" /> : 'Request Booking'}

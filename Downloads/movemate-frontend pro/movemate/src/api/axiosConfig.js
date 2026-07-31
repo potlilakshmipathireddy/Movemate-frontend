@@ -173,6 +173,7 @@ export const cityService = {
 }
 
 export const guideService = {
+  getAll: () => api.get('/api/guides'),
   create: (data) => api.post('/api/guides', data),
   update: (id, data) => api.put(`/api/guides/${id}`, data),
   delete: (id) => api.delete(`/api/guides/${id}`),

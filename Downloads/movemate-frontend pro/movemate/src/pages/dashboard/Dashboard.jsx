@@ -28,7 +28,7 @@ export default function Dashboard() {
   const { user, isOwner, isAdmin, loading: authLoading } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  console.log("LOGGED IN USER OBJECT:", user)
+  
 
   useEffect(() => {
     // Only fetch dashboard data if the user is not an owner (or you can fetch shared data as needed)

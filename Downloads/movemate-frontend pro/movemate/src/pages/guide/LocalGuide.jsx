@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiSearch, FiStar, FiMapPin, FiDollarSign, FiPlus } from 'react-icons/fi'
+import { FiSearch, FiStar, FiMapPin, FiDollarSign, FiPlus, FiGlobe, FiClock } from 'react-icons/fi'
 import { guideService } from '../../api/axiosConfig'
 import { useAuth } from '../../context/AuthContext'
 import { SkeletonCard } from '../../components/common/Loaders'
@@ -9,30 +9,60 @@ import { SkeletonCard } from '../../components/common/Loaders'
 export default function LocalGuide() {
   const [city, setCity] = useState('')
   const [guides, setGuides] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { isAdmin } = useAuth()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    fetchGuides()
+  }, [])
+
+  const fetchGuides = async () => {
+    setLoading(true)
+    try {
+      const res = await guideService.getAll()
+      const data = Array.isArray(res.data) ? res.data : (res.data?.content || [])
+      setGuides(data)
+    } catch {
+      setGuides([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const search = async (e) => {
     e?.preventDefault()
-    if (!city.trim()) return
+    if (!city.trim()) {
+      fetchGuides()
+      return
+    }
     setLoading(true)
-    setSearched(true)
     try {
       const res = await guideService.searchByCity(city)
-      setGuides(res.data || [])
-    } catch { setGuides([]) } finally { setLoading(false) }
+      const data = Array.isArray(res.data) ? res.data : (res.data?.content || [])
+      setGuides(data)
+    } catch { 
+      setGuides([]) 
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const getRecommended = async () => {
-    if (!city.trim()) return
+    if (!city.trim()) {
+      fetchGuides()
+      return
+    }
     setLoading(true)
-    setSearched(true)
     try {
       const res = await guideService.getRecommended(city)
-      setGuides(res.data || [])
-    } catch { setGuides([]) } finally { setLoading(false) }
+      const data = Array.isArray(res.data) ? res.data : (res.data?.content || [])
+      setGuides(data)
+    } catch { 
+      setGuides([]) 
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   return (
@@ -42,7 +72,6 @@ export default function LocalGuide() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
             <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Local Experts</div>
             
-            {/* Header row with Title and Conditional Admin Add Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
               <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 900, fontSize: 'clamp(2rem, 5vw, 3.5rem)', margin: 0 }}>
                 Find Your <span className="gradient-text">Local Guide</span>
@@ -72,55 +101,117 @@ export default function LocalGuide() {
       </div>
 
       <div className="container" style={{ paddingTop: 48, paddingBottom: 60 }}>
-        {!searched ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div style={{ fontSize: '4rem', marginBottom: 16 }}>🗺️</div>
-            <h4 style={{ fontFamily: 'Space Grotesk, sans-serif', color: 'var(--text-secondary)' }}>Search for guides in your city</h4>
-            <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Enter a city name above to find available local guides.</p>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="row g-4">{Array.from({length:6}).map((_,i)=><div key={i} className="col-12 col-md-6 col-lg-4"><SkeletonCard /></div>)}</div>
-        ) : guides.length ? (
+        ) : Array.isArray(guides) && guides.length > 0 ? (
           <>
-            <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: '0.85rem' }}>{guides.length} guides found in {city}</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: '0.85rem' }}>
+              {city ? `${guides.length} guides found in ${city}` : `All available guides (${guides.length})`}
+            </p>
             <div className="row g-4">
               {guides.map((guide, i) => (
                 <motion.div key={guide.id} className="col-12 col-md-6 col-lg-4"
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <div className="mm-card" style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
-                      <div className="mm-avatar" style={{ width: 54, height: 54, fontSize: '1.2rem', flexShrink: 0 }}>
-                        {guide.name?.[0]?.toUpperCase()}
-                      </div>
-                      <div>
-                        <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, marginBottom: 4 }}>{guide.name}</h5>
-                        <span className="mm-badge mm-badge-primary" style={{ fontSize: '0.7rem' }}>{guide.guideType?.replace(/_/g,' ')}</span>
-                      </div>
+                  
+                  {/* Card Container mimicking Accommodation style */}
+                  <div style={{ 
+                    background: 'var(--dark2, #161b22)', 
+                    border: '1px solid var(--border, #30363d)', 
+                    borderRadius: 16, 
+                    overflow: 'hidden', 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    transition: 'transform 0.2s ease'
+                  }}>
+                    
+                    {/* Image Header with Floating Badges */}
+                    <div style={{ position: 'relative', height: 200, background: '#21262d', overflow: 'hidden' }}>
+                      {guide.profileImageUrl ? (
+                        <img src={guide.profileImageUrl} alt={guide.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'var(--text-muted)' }}>
+                          👤
+                        </div>
+                      )}
+
+                      {/* Floating Badge top-left */}
+                      {guide.guideType && (
+                        <span style={{ 
+                          position: 'absolute', top: 12, left: 12, 
+                          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', 
+                          color: '#fff', fontSize: '0.7rem', padding: '4px 10px', 
+                          borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: '0.5px' 
+                        }}>
+                          {guide.guideType.replace(/_/g,' ')}
+                        </span>
+                      )}
+
+                      {/* Floating Rating Badge top-right */}
+                      {guide.rating && (
+                        <span style={{ 
+                          position: 'absolute', top: 12, right: 12, 
+                          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', 
+                          color: '#FFC107', fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', 
+                          borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 4 
+                        }}>
+                          <FiStar size={12} /> {guide.rating} ({guide.totalReviews || 0})
+                        </span>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                      {guide.city && <div style={{ display: 'flex', gap: 6, fontSize: '0.82rem', color: 'var(--text-muted)' }}><FiMapPin size={13} /> {guide.city}</div>}
-                      {guide.ratePerDay && <div style={{ display: 'flex', gap: 6, fontSize: '0.82rem', color: 'var(--text-muted)' }}><FiDollarSign size={13} /> ₹{guide.ratePerDay}/day</div>}
-                      {guide.rating && <div style={{ display: 'flex', gap: 6, fontSize: '0.82rem', color: '#FFC107' }}><FiStar size={13} /> {guide.rating} / 5</div>}
-                      {guide.languages && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>🗣️ {guide.languages}</div>}
-                      {guide.experience && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>📅 {guide.experience} years experience</div>}
+                    {/* Card Content Body */}
+                    <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <h5 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1.15rem', color: '#fff', marginBottom: 6 }}>
+                        {guide.name}
+                      </h5>
+
+                      {guide.city && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+                          <FiMapPin size={14} color="var(--primary)" /> {guide.city}
+                        </div>
+                      )}
+
+                      {/* Meta Information / Icons row */}
+                      <div style={{ display: 'flex', gap: 12, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 16, flexWrap: 'wrap' }}>
+                        {guide.experienceYears && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <FiClock size={13} /> {guide.experienceYears} yrs exp
+                          </span>
+                        )}
+                        {guide.languages && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <FiGlobe size={13} /> {Array.isArray(guide.languages) ? guide.languages.join(', ') : guide.languages}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Bottom Pricing & Action Section */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', fontFamily: 'Space Grotesk, sans-serif' }}>
+                            ₹{guide.hourlyRate || '0'}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> /hr</span>
+                        </div>
+
+                        <button onClick={() => navigate(`/guides/${guide.id}`)} className="btn-primary-mm" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                          View & Book
+                        </button>
+                      </div>
+
                     </div>
 
-                    {guide.bio && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{guide.bio}</p>}
-
-                    <button onClick={() => navigate(`/guides/${guide.id}`)} className="btn-primary-mm" style={{ width: '100%', justifyContent: 'center', marginTop: 16, padding: '10px' }}>
-                      View & Book
-                    </button>
                   </div>
                 </motion.div>
               ))}
             </div>
           </>
         ) : (
-          <div className="empty-state">
-            <div className="empty-icon">🗺️</div>
-            <h4>No guides found in {city}</h4>
-            <p>Try a different city or use AI recommendations.</p>
+          <div className="empty-state" style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: 16 }}>🗺️</div>
+            <h4>No local guides found</h4>
+            <p style={{ color: 'var(--text-muted)' }}>Try adding a guide or searching a different city.</p>
           </div>
         )}
       </div>

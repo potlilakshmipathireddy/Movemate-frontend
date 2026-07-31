@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { toast } from 'react-toastify'
 import { Spinner } from '../../components/common/Loaders'
 
-const ROLES = ['ROLE_USER', 'ROLE_OWNER','ROLE_ADMIN']
+const ROLES = ['ROLE_USER', 'ROLE_OWNER']
 
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', mobileNumber: '', roles: 'ROLE_USER' })
@@ -43,7 +43,7 @@ export default function Register() {
       // Exclude confirmPassword from the payload sent to the backend API
       const { confirmPassword, ...payload } = form
       await register(payload)
-      toast.success('Registration successful! Please verify your email.')
+      toast.success('Registration successful! Please sign in.')
       navigate('/login')
     } catch (err) {
       toast.error(err.response?.data || err.response?.data?.message || 'Registration failed')
@@ -134,7 +134,7 @@ export default function Register() {
                     color: form.roles === r ? 'var(--primary-light)' : 'var(--text-muted)'
                   }}>
                     <input type="radio" style={{ display: 'none' }} value={r} checked={form.roles === r} onChange={set('roles')} />
-                    {r === 'ROLE_USER' ? '👤 Tenant' : r === 'ROLE_OWNER' ? '🏠 Owner' : '🛡️ Admin'}
+                    {r === 'ROLE_USER' ? '👤 Tenant' : '🏠 Owner'}
                   </label>
                 ))}
               </div>

@@ -12,9 +12,14 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import VerifyEmail from './pages/auth/VerifyEmail'
 import Dashboard from './pages/dashboard/Dashboard'
-import ownerDashboard from './pages/dashboard/OwnerDashboard'
+import OwnerDashboard from './pages/dashboard/OwnerDashboard'
 import Profile from './pages/auth/Profile'
 import Account from './pages/auth/Account'
+
+// Admin Pages & Guards
+import AdminLogin from './pages/auth/Admin'
+import AdminDashboard from './pages/dashboard/AdminDashboard'
+import AdminRoute from './context/AdminRoute'
 
 import AccommodationList from './pages/accommodation/AccommodationList'
 import AccommodationDetail from './pages/accommodation/AccommodationDetail'
@@ -37,6 +42,7 @@ import CityDetail from './pages/city/CityDetail'
 
 import LocalGuide from './pages/guide/LocalGuide'
 import GuideDetail from './pages/guide/GuideDetail'
+import GuideAdd from './pages/guide/GuideAdd'
 
 import Reviews from './pages/reviews/Reviews'
 import SavedPlaces from './pages/saved/SavedPlaces'
@@ -63,6 +69,20 @@ export default function App() {
         <ScrollToTop />
         <ToastContainer position="top-right" autoClose={3000} theme="dark" />
         <Routes>
+          {/* Admin Login Route (Isolated outside main website layout) */}
+          <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+
+          {/* Protected Admin Dashboard Route */}
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } 
+          />
+
+          {/* Standard Main Layout Routes */}
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -72,7 +92,7 @@ export default function App() {
             <Route path="/verify" element={<VerifyEmail />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/owner-dashboard" element={<ProtectedRoute><ownerDashboard /></ProtectedRoute>} />
+            <Route path="/owner-dashboard" element={<ProtectedRoute><OwnerDashboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
 
@@ -102,6 +122,9 @@ export default function App() {
             {/* Protected Guide Routes */}
             <Route path="/guides" element={<ProtectedRoute><LocalGuide /></ProtectedRoute>} />
             <Route path="/guides/:id" element={<ProtectedRoute><GuideDetail /></ProtectedRoute>} />
+            <Route path="/local-guides" element={<ProtectedRoute><LocalGuide /></ProtectedRoute>} />
+            <Route path="/local-guides/add" element={<AdminRoute><GuideAdd /></AdminRoute>} />
+            <Route path="/local-guides/edit/:id" element={<AdminRoute><GuideAdd /></AdminRoute>} />
 
             {/* Protected Reviews & Utility Routes */}
             <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
